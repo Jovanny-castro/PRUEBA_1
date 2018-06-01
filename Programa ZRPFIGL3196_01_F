@@ -1,0 +1,517 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZRPFIGL3196_01_F
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  INITIALIZATION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM initialization .
+  "Adicionar Botón: Parametrización
+  gc_btn1-icon_id    = icon_system_settings.
+  gc_btn1-quickinfo  = text-qif.
+  gc_btn1-icon_text  = text-con.
+  sscrfields-functxt_01 = gc_btn1.
+
+  gc_btn2-icon_id    = icon_sym_real_server.
+  gc_btn2-quickinfo  = text-qt1.
+  gc_btn2-icon_text  = text-t01.
+  sscrfields-functxt_02 = gc_btn2.
+
+  gc_btn3-icon_id    = icon_sym_log_server.
+  gc_btn3-quickinfo  = text-qt2.
+  gc_btn3-icon_text  = text-t02.
+  sscrfields-functxt_03 = gc_btn3.
+
+  "Validar autorización para ejecución de transacción
+  CREATE OBJECT go_dao.
+  gc_subrc = go_dao->authority_check( ).
+  IF gc_subrc <> 0.
+    "No tiene autorizacion para ejecutar esta actividad.
+    MESSAGE e017 DISPLAY LIKE 'E'.
+  ENDIF.
+
+  "Inicializar valor para JOB
+  IF NOT sy-batch IS INITIAL.
+    pa_job = sy-batch.
+    IMPORT monat TO pa_monat FROM SHARED MEMORY indx(aa) ID 'MONAT'.
+    IMPORT gjahr TO pa_gjahr FROM SHARED MEMORY indx(ab) ID 'GJAHR'.
+    IMPORT bukr1 TO pa_bukr1 FROM SHARED MEMORY indx(ac) ID 'BUKR1'.
+    IMPORT bukr2 TO pa_bukr2 FROM SHARED MEMORY indx(ad) ID 'BUKR2'.
+  ENDIF.
+ENDFORM.                    " INITIALIZATION
+*&---------------------------------------------------------------------*
+*&      Form  CHANGE_SCREEN
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM change_screen .
+  LOOP AT SCREEN.
+    "Solo mostrar los parámetros para generar el reporte
+    IF rb_creat = abap_true.
+      IF screen-group1 = 'USR' OR screen-group1 = 'PTH' OR screen-group1 = 'LAY'.
+        screen-active = 0.
+      ELSE.
+        screen-active = 1.
+        screen-required = 2.
+      ENDIF.
+    ENDIF.
+
+    "Mostrar opciones para consultar el reporte
+    IF rb_searc = abap_true.
+      IF screen-group1 = 'PTH' OR screen-group1 = 'BUK' OR screen-group1 = 'MON'.
+        screen-active = 0.
+      ELSE.
+        screen-active = 1.
+        screen-required = 2.
+      ENDIF.
+
+      IF screen-name = 'PA_LAYOU' OR screen-name = 'SO_MONAT-HIGH'.
+        screen-required = 0.
+      ENDIF.
+    ENDIF.
+
+    "Mostrar solo opción de cargar archivo
+    IF rb_uploa = abap_true.
+      IF screen-group1 = 'USR' OR screen-group1 = 'SCR' OR screen-group1 = 'LAY' OR screen-group1 = 'BUK' OR screen-group1 = 'MON'.
+        screen-active = 0.
+      ELSE.
+        screen-active = 1.
+        screen-required = 2.
+      ENDIF.
+    ENDIF.
+
+    MODIFY SCREEN.
+  ENDLOOP.
+ENDFORM.                    " CHANGE_SCREEN
+*&---------------------------------------------------------------------*
+*&      Form  VALITE_PARAMETERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM valite_parameters .
+
+  CLEAR gc_subrc.
+  IF pa_job IS INITIAL.
+    "Validar campos para la generación reporte
+    IF NOT rb_creat IS INITIAL.
+      IF pa_monat IS INITIAL OR
+         pa_gjahr IS INITIAL OR
+         pa_bukr1 IS INITIAL OR
+         pa_bukr2 IS INITIAL.
+
+        "Diligenciar los campos obligatorios
+        gc_subrc = 4.
+        MESSAGE s000 DISPLAY LIKE 'E' WITH text-e01.
+      ENDIF.
+    ENDIF.
+
+    "Validar campos para la consulta del reporte
+    IF NOT rb_searc IS INITIAL.
+      IF so_monat IS INITIAL OR
+         pa_gjahr IS INITIAL OR
+         pa_bukr1 IS INITIAL.
+
+        "Diligenciar los campos obligatorios
+        gc_subrc = 4.
+        MESSAGE s000 DISPLAY LIKE 'E' WITH text-e01.
+      ENDIF.
+    ENDIF.
+
+    "Validar campo para la carga del archivo
+    IF NOT rb_uploa IS INITIAL.
+      IF pa_path IS INITIAL.
+
+        "Diligenciar los campos obligatorios
+        gc_subrc = 4.
+        MESSAGE s000 DISPLAY LIKE 'E' WITH text-e01.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    " VALITE_PARAMETERS
+*&---------------------------------------------------------------------*
+*&      Form  VALIDATE_REPORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM validate_report .
+
+  DATA:
+  lc_answer   TYPE flag,
+  lc_question TYPE string.
+
+  IF pa_job IS INITIAL.
+    CLEAR: gc_subrc, lc_answer, lc_question.
+
+    "Validar si el reporte ya existe para los parámetros ingresados
+    CALL METHOD go_dao->get_report
+      EXPORTING
+        i_c_monat = pa_monat
+        i_c_bukrs = pa_bukr1
+        i_c_gjahr = pa_gjahr
+      IMPORTING
+        e_c_subrc = gc_subrc.
+
+    IF gc_subrc IS INITIAL.
+      "Para los parámetros ingresados ya fue generado el reporte
+      "¿Desea sobrescribir la informacón?
+      lc_question = text-q01.
+      CALL METHOD go_dao->msj_popup
+        EXPORTING
+          i_c_question = lc_question
+        RECEIVING
+          r_c_answer   = lc_answer.
+
+      IF lc_answer = abap_false.
+        "Reporte ya generado para los datos ingresados.
+        "Ejecute la opción: "Consultar reporte"
+        MESSAGE s000 DISPLAY LIKE 'E' WITH text-e02 text-e03.
+        gc_subrc = '99'.
+        RETURN.
+      ELSE.
+        CALL METHOD go_dao->delete_data
+          EXPORTING
+            i_c_monat = pa_monat
+            i_c_gjahr = pa_gjahr
+            i_c_bukrs = pa_bukr1
+          RECEIVING
+            r_c_subrc = gc_subrc.
+
+        IF gc_subrc IS INITIAL.
+          CALL METHOD go_dao->commit.
+        ELSE.
+          "Error al sobreescribir la información. Intente nuevamente.
+          MESSAGE s000 DISPLAY LIKE 'E' WITH text-r01 text-r02.
+          gc_subrc = '99'.
+          RETURN.
+        ENDIF.
+      ENDIF.
+    ELSE.
+      CLEAR gc_subrc.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    " VALIDATE_REPORT
+*&---------------------------------------------------------------------*
+*&      Form  GENERATE_REPORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM generate_report .
+  DATA: lc_idjob TYPE string.
+
+  IF gc_subrc IS INITIAL.
+
+    "Generar el reporte.
+    CREATE OBJECT go_ppal
+      EXPORTING
+        i_c_job   = pa_job
+        i_c_monat = pa_monat
+        i_c_gjahr = pa_gjahr
+        i_c_bukr1 = pa_bukr1
+        i_c_bukr2 = pa_bukr2.
+
+    "Generar el reporte.
+    go_ppal->generate_report(
+      IMPORTING
+        e_c_subrc = gc_subrc ).
+
+    "Identificar el error y mostrar el mensaje correspondiente
+    CASE gc_subrc.
+      WHEN 0.
+        CLEAR: lc_idjob.
+        lc_idjob = |Impo_{ pa_bukr1 }_{ pa_gjahr }{ pa_monat }|.
+        "El reporte se ejecutará en fondo con el ID: &&
+        "Una vez finalice se le notificará vía correo.
+        MESSAGE s000 DISPLAY LIKE 'S' WITH text-s01 lc_idjob text-s02.
+      WHEN 1.
+        "Para los parámetros ingresados, ya se está ejecutando un Job
+        MESSAGE text-e04 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 2.
+        "Error al ejecutar el reporte en fondo. Intente nuevamente
+        MESSAGE text-e05 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 3.
+        "Error al ejecutar el reporte en fondo. Intente nuevamente
+        MESSAGE text-e05 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 4.
+        "Error al finalizar la ejecución del Job
+        MESSAGE text-e06 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 5.
+        "Falta parametrizar clases de documentos en tabla ZTFIGL_3196_1
+        MESSAGE text-e07 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 6.
+        "Falta parametrizar centro para la sociedad & en tabla ZTFIGL_3196_7
+        MESSAGE text-e08 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 7.
+        "Falta parametrizar Cuentas de transito: Tabla SETLEAF
+        MESSAGE text-e09 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 8.
+        "Para los parámetros ingresados no se encontraron datos en la tabla BKPF
+        MESSAGE text-e10 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 9.
+        "No se encontró proporcionalidad de importaciones por centro
+        MESSAGE text-e11 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 10.
+        "No se encontrarón datos para las cuentas parametrizadas en la tabla SETLEAF
+        MESSAGE text-e12 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 11.
+        "No se encontrarón cuentas que aplican para IVA y Rete Fuente: Tabla ZTFIGL_3196_6
+        MESSAGE text-e13 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 12.
+        "Error al consultar indicadores de impuesto.
+        MESSAGE text-e14 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 13.
+        "Error al consultar condiciones de precio: Tabla KONP.
+        MESSAGE text-e15 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 14.
+        "Error al guardar los datos en BD. Ejecute nuevamente la transacción.
+        MESSAGE text-e16 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 15.
+        "Error al enviar correo de notificación. No hay correos parametrizados
+        MESSAGE text-e17 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN 16.
+        "Error al enviar correo de notificación. Validar con el admin del sistema
+        MESSAGE text-e18 TYPE 'S' DISPLAY LIKE 'E'.
+      WHEN OTHERS.
+    ENDCASE.
+  ENDIF.
+ENDFORM.                    " GENERATE_REPORT
+*&---------------------------------------------------------------------*
+*&      Form  GET_CONSTANTS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM action_button .
+
+  CASE sy-ucomm.
+    WHEN 'FC01'.
+      "Validar autorización ver parametrización
+      CREATE OBJECT go_dao.
+      gc_subrc = go_dao->authority_check( ).
+      IF gc_subrc <> 0.
+        "No tiene autorizacion para ejecutar esta actividad.
+        MESSAGE s017 DISPLAY LIKE 'E'.
+      ENDIF.
+
+      "Llamado a la Parametrización
+      CALL FUNCTION 'VIEWCLUSTER_MAINTENANCE_CALL'
+        EXPORTING
+          viewcluster_name   = 'ZCVFIGL_3196_1'
+          maintenance_action = 'U'.
+    WHEN 'FC02'.
+      PERFORM get_path_file.
+      IF gc_subrc = 0.
+        "Actualizar tabla ZTFIGL_3196_4
+        PERFORM update_table USING 1.
+      ENDIF.
+    WHEN 'FC03'.
+      PERFORM get_path_file.
+      IF gc_subrc = 0.
+        "Actualizar tabla ZTFIGL_3196_5
+        PERFORM update_table USING 2.
+      ENDIF.
+  ENDCASE.
+ENDFORM.                    " ACTION_BUTTON
+*&---------------------------------------------------------------------*
+*&      Form  GET_REPORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_report .
+
+  "Consultar el reporte.
+  CREATE OBJECT go_ppal
+    EXPORTING
+      i_r_monat = so_monat[]
+      i_c_gjahr = pa_gjahr
+      i_c_bukr1 = pa_bukr1
+      i_c_layou = pa_layou.
+
+  "Generar el reporte.
+  go_ppal->generate_alv(
+    IMPORTING
+      e_c_subrc = gc_subrc ).
+
+  CASE gc_subrc.
+    WHEN 1.
+      "No se encontraron datos para los parámetros ingresados.
+      MESSAGE text-r03 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.                    " GET_REPORT
+*&---------------------------------------------------------------------*
+*&      Form  UPDATE_REPORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM update_report .
+
+  DATA:
+  lti_return  TYPE zttlomm3191_6,
+  lc_answer   TYPE flag,
+  lc_question TYPE string.
+
+  "Actualizar tabla con importaciones manuales
+  CLEAR: gc_subrc.
+  CREATE OBJECT go_ppal
+    EXPORTING
+      i_c_path = pa_path.
+
+  "Guardar información del archivo de Excel.
+  go_ppal->update_report(
+    IMPORTING
+      e_c_subrc   = gc_subrc
+      e_ti_return = lti_return ).
+
+  CASE gc_subrc.
+    WHEN 0.
+      MESSAGE text-u06 TYPE 'S' DISPLAY LIKE 'S'.
+    WHEN 1.
+      "Extensión del archivo incorrecta
+      MESSAGE text-u03 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 2.
+      "Error al leer la información del archivo. Valide la consistencia de los datos.
+      MESSAGE text-u04 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 3.
+      "El archivo contiene filas repetidas. Validar ID, Sociedad, Ejercicio y Mes Fact.
+      MESSAGE text-u05 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 4.
+      "Algunos registros cargados presentan inconsistencias.
+      "Por lo cual la información no será actualizada.
+      "¿Desea ver los registros con errores?
+      lc_question = |{ text-q02 } { text-q03 } { text-q04 }|.
+      CALL METHOD go_dao->msj_popup
+        EXPORTING
+          i_c_question = lc_question
+        RECEIVING
+          r_c_answer   = lc_answer.
+
+      IF lc_answer = abap_false.
+        "Ningún registro fue guardado.
+        MESSAGE text-u08 TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        TRY.
+            CALL METHOD go_ppal->show_log_infofile(
+              CHANGING
+                c_ti_table = lti_return ).
+          CATCH cx_salv_msg .                           "#EC NO_HANDLER
+          CATCH cx_salv_not_found .                     "#EC NO_HANDLER
+        ENDTRY.
+      ENDIF.
+    WHEN 5.
+      "Error al guardar la información. Ejecute nuevamente.
+      MESSAGE text-u07 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN OTHERS.
+  ENDCASE.
+ENDFORM.                    " UPDATE_REPORT
+*&---------------------------------------------------------------------*
+*&      Form  GET_PATH_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_path_file .
+  "Matchode.
+  CLEAR: gc_subrc, pa_path.
+  CALL METHOD go_dao->get_f4_localfile
+    IMPORTING
+      e_c_subrc = gc_subrc
+      e_c_path  = pa_path.
+
+  CASE gc_subrc.
+    WHEN 1.
+      "Error al leer el archivo
+      MESSAGE text-u01 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 2.
+      "Ruta del archivo demasiado larga
+      MESSAGE text-u02 TYPE 'S' DISPLAY LIKE 'E'.
+  ENDCASE.
+
+ENDFORM.                    " GET_PATH_FILE
+*&---------------------------------------------------------------------*
+*&      Form  GET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_IF_SALV_C_LAYOUT=>RESTRICT_NON  text
+*      <--P_PA_LAYOU  text
+*----------------------------------------------------------------------*
+FORM get_layout  USING i_restrict TYPE salv_de_layout_restriction
+              CHANGING c_layout   TYPE disvariant-variant.
+
+  DATA: lwa_layout TYPE salv_s_layout_info,
+        lwa_key    TYPE salv_s_layout_key.
+
+  lwa_key-report = sy-repid.
+
+  lwa_layout = cl_salv_layout_service=>f4_layouts(
+    s_key    = lwa_key
+    restrict = i_restrict ).
+
+  c_layout = lwa_layout-layout.
+
+ENDFORM.                    " GET_LAYOUT
+*&---------------------------------------------------------------------*
+*&      Form  UPDATE_TABLE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM update_table USING p_e_option TYPE i.
+
+  "Actualizar tabla con
+  CLEAR: gc_subrc.
+  CREATE OBJECT go_ppal
+    EXPORTING
+      i_c_path = pa_path.
+
+  "Guardar información del archivo de Excel.
+  go_ppal->update_table(
+    EXPORTING
+      i_e_option = p_e_option
+    RECEIVING
+      r_c_subrc = gc_subrc ).
+
+  CASE gc_subrc.
+    WHEN 0.
+      MESSAGE text-u06 TYPE 'S' DISPLAY LIKE 'S'.
+    WHEN 1.
+      "Extensión del archivo incorrecta
+      MESSAGE text-u03 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 2.
+      "Error al leer la información del archivo. Valide la consistencia de los datos.
+      MESSAGE text-u04 TYPE 'S' DISPLAY LIKE 'E'.
+    WHEN 3.
+      "Error al guardar la información. Ejecute nuevamente.
+      MESSAGE text-u07 TYPE 'S' DISPLAY LIKE 'E'.
+  ENDCASE.
+
+  CLEAR pa_path.
+ENDFORM.                    " UPDATE_TABLE
