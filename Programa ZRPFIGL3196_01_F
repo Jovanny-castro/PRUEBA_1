@@ -10,7 +10,7 @@
 *  <--  p2        text
 *----------------------------------------------------------------------*
 FORM initialization .
-  "Adicionar Botón: Parametrización
+  "Adicionar BotÃ³n: ParametrizaciÃ³n
   gc_btn1-icon_id    = icon_system_settings.
   gc_btn1-quickinfo  = text-qif.
   gc_btn1-icon_text  = text-con.
@@ -26,7 +26,7 @@ FORM initialization .
   gc_btn3-icon_text  = text-t02.
   sscrfields-functxt_03 = gc_btn3.
 
-  "Validar autorización para ejecución de transacción
+  "Validar autorizaciÃ³n para ejecuciÃ³n de transacciÃ³n
   CREATE OBJECT go_dao.
   gc_subrc = go_dao->authority_check( ).
   IF gc_subrc <> 0.
@@ -53,7 +53,7 @@ ENDFORM.                    " INITIALIZATION
 *----------------------------------------------------------------------*
 FORM change_screen .
   LOOP AT SCREEN.
-    "Solo mostrar los parámetros para generar el reporte
+    "Solo mostrar los parÃ¡metros para generar el reporte
     IF rb_creat = abap_true.
       IF screen-group1 = 'USR' OR screen-group1 = 'PTH' OR screen-group1 = 'LAY'.
         screen-active = 0.
@@ -77,7 +77,7 @@ FORM change_screen .
       ENDIF.
     ENDIF.
 
-    "Mostrar solo opción de cargar archivo
+    "Mostrar solo opciÃ³n de cargar archivo
     IF rb_uploa = abap_true.
       IF screen-group1 = 'USR' OR screen-group1 = 'SCR' OR screen-group1 = 'LAY' OR screen-group1 = 'BUK' OR screen-group1 = 'MON'.
         screen-active = 0.
@@ -102,7 +102,7 @@ FORM valite_parameters .
 
   CLEAR gc_subrc.
   IF pa_job IS INITIAL.
-    "Validar campos para la generación reporte
+    "Validar campos para la generaciÃ³n reporte
     IF NOT rb_creat IS INITIAL.
       IF pa_monat IS INITIAL OR
          pa_gjahr IS INITIAL OR
@@ -155,7 +155,7 @@ FORM validate_report .
   IF pa_job IS INITIAL.
     CLEAR: gc_subrc, lc_answer, lc_question.
 
-    "Validar si el reporte ya existe para los parámetros ingresados
+    "Validar si el reporte ya existe para los parÃ¡metros ingresados
     CALL METHOD go_dao->get_report
       EXPORTING
         i_c_monat = pa_monat
@@ -165,8 +165,8 @@ FORM validate_report .
         e_c_subrc = gc_subrc.
 
     IF gc_subrc IS INITIAL.
-      "Para los parámetros ingresados ya fue generado el reporte
-      "¿Desea sobrescribir la informacón?
+      "Para los parÃ¡metros ingresados ya fue generado el reporte
+      "Â¿Desea sobrescribir la informacÃ³n?
       lc_question = text-q01.
       CALL METHOD go_dao->msj_popup
         EXPORTING
@@ -176,7 +176,7 @@ FORM validate_report .
 
       IF lc_answer = abap_false.
         "Reporte ya generado para los datos ingresados.
-        "Ejecute la opción: "Consultar reporte"
+        "Ejecute la opciÃ³n: "Consultar reporte"
         MESSAGE s000 DISPLAY LIKE 'E' WITH text-e02 text-e03.
         gc_subrc = '99'.
         RETURN.
@@ -192,7 +192,7 @@ FORM validate_report .
         IF gc_subrc IS INITIAL.
           CALL METHOD go_dao->commit.
         ELSE.
-          "Error al sobreescribir la información. Intente nuevamente.
+          "Error al sobreescribir la informaciÃ³n. Intente nuevamente.
           MESSAGE s000 DISPLAY LIKE 'E' WITH text-r01 text-r02.
           gc_subrc = '99'.
           RETURN.
@@ -235,11 +235,11 @@ FORM generate_report .
       WHEN 0.
         CLEAR: lc_idjob.
         lc_idjob = |Impo_{ pa_bukr1 }_{ pa_gjahr }{ pa_monat }|.
-        "El reporte se ejecutará en fondo con el ID: &&
-        "Una vez finalice se le notificará vía correo.
+        "El reporte se ejecutarÃ¡ en fondo con el ID: &&
+        "Una vez finalice se le notificarÃ¡ vÃ­a correo.
         MESSAGE s000 DISPLAY LIKE 'S' WITH text-s01 lc_idjob text-s02.
       WHEN 1.
-        "Para los parámetros ingresados, ya se está ejecutando un Job
+        "Para los parÃ¡metros ingresados, ya se estÃ¡ ejecutando un Job
         MESSAGE text-e04 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 2.
         "Error al ejecutar el reporte en fondo. Intente nuevamente
@@ -248,7 +248,7 @@ FORM generate_report .
         "Error al ejecutar el reporte en fondo. Intente nuevamente
         MESSAGE text-e05 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 4.
-        "Error al finalizar la ejecución del Job
+        "Error al finalizar la ejecuciÃ³n del Job
         MESSAGE text-e06 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 5.
         "Falta parametrizar clases de documentos en tabla ZTFIGL_3196_1
@@ -260,16 +260,16 @@ FORM generate_report .
         "Falta parametrizar Cuentas de transito: Tabla SETLEAF
         MESSAGE text-e09 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 8.
-        "Para los parámetros ingresados no se encontraron datos en la tabla BKPF
+        "Para los parÃ¡metros ingresados no se encontraron datos en la tabla BKPF
         MESSAGE text-e10 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 9.
-        "No se encontró proporcionalidad de importaciones por centro
+        "No se encontrÃ³ proporcionalidad de importaciones por centro
         MESSAGE text-e11 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 10.
-        "No se encontrarón datos para las cuentas parametrizadas en la tabla SETLEAF
+        "No se encontrarÃ³n datos para las cuentas parametrizadas en la tabla SETLEAF
         MESSAGE text-e12 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 11.
-        "No se encontrarón cuentas que aplican para IVA y Rete Fuente: Tabla ZTFIGL_3196_6
+        "No se encontrarÃ³n cuentas que aplican para IVA y Rete Fuente: Tabla ZTFIGL_3196_6
         MESSAGE text-e13 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 12.
         "Error al consultar indicadores de impuesto.
@@ -278,13 +278,13 @@ FORM generate_report .
         "Error al consultar condiciones de precio: Tabla KONP.
         MESSAGE text-e15 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 14.
-        "Error al guardar los datos en BD. Ejecute nuevamente la transacción.
+        "Error al guardar los datos en BD. Ejecute nuevamente la transacciÃ³n.
         MESSAGE text-e16 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 15.
-        "Error al enviar correo de notificación. No hay correos parametrizados
+        "Error al enviar correo de notificaciÃ³n. No hay correos parametrizados
         MESSAGE text-e17 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN 16.
-        "Error al enviar correo de notificación. Validar con el admin del sistema
+        "Error al enviar correo de notificaciÃ³n. Validar con el admin del sistema
         MESSAGE text-e18 TYPE 'S' DISPLAY LIKE 'E'.
       WHEN OTHERS.
     ENDCASE.
@@ -302,7 +302,7 @@ FORM action_button .
 
   CASE sy-ucomm.
     WHEN 'FC01'.
-      "Validar autorización ver parametrización
+      "Validar autorizaciÃ³n ver parametrizaciÃ³n
       CREATE OBJECT go_dao.
       gc_subrc = go_dao->authority_check( ).
       IF gc_subrc <> 0.
@@ -310,7 +310,7 @@ FORM action_button .
         MESSAGE s017 DISPLAY LIKE 'E'.
       ENDIF.
 
-      "Llamado a la Parametrización
+      "Llamado a la ParametrizaciÃ³n
       CALL FUNCTION 'VIEWCLUSTER_MAINTENANCE_CALL'
         EXPORTING
           viewcluster_name   = 'ZCVFIGL_3196_1'
@@ -328,7 +328,7 @@ FORM action_button .
         PERFORM update_table USING 2.
       ENDIF.
   ENDCASE.
-ENDFORM.                    " ACTION_BUTTON
+ENDFORM.                    " ACTION_BUTTON /////
 *&---------------------------------------------------------------------*
 *&      Form  GET_REPORT
 *&---------------------------------------------------------------------*
@@ -354,7 +354,7 @@ FORM get_report .
 
   CASE gc_subrc.
     WHEN 1.
-      "No se encontraron datos para los parámetros ingresados.
+      "No se encontraron datos para los parÃ¡metros ingresados.
       MESSAGE text-r03 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN OTHERS.
   ENDCASE.
@@ -380,7 +380,7 @@ FORM update_report .
     EXPORTING
       i_c_path = pa_path.
 
-  "Guardar información del archivo de Excel.
+  "Guardar informaciÃ³n del archivo de Excel.
   go_ppal->update_report(
     IMPORTING
       e_c_subrc   = gc_subrc
@@ -390,18 +390,18 @@ FORM update_report .
     WHEN 0.
       MESSAGE text-u06 TYPE 'S' DISPLAY LIKE 'S'.
     WHEN 1.
-      "Extensión del archivo incorrecta
+      "ExtensiÃ³n del archivo incorrecta
       MESSAGE text-u03 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN 2.
-      "Error al leer la información del archivo. Valide la consistencia de los datos.
+      "Error al leer la informaciÃ³n del archivo. Valide la consistencia de los datos.
       MESSAGE text-u04 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN 3.
       "El archivo contiene filas repetidas. Validar ID, Sociedad, Ejercicio y Mes Fact.
       MESSAGE text-u05 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN 4.
       "Algunos registros cargados presentan inconsistencias.
-      "Por lo cual la información no será actualizada.
-      "¿Desea ver los registros con errores?
+      "Por lo cual la informaciÃ³n no serÃ¡ actualizada.
+      "Â¿Desea ver los registros con errores?
       lc_question = |{ text-q02 } { text-q03 } { text-q04 }|.
       CALL METHOD go_dao->msj_popup
         EXPORTING
@@ -410,7 +410,7 @@ FORM update_report .
           r_c_answer   = lc_answer.
 
       IF lc_answer = abap_false.
-        "Ningún registro fue guardado.
+        "NingÃºn registro fue guardado.
         MESSAGE text-u08 TYPE 'S' DISPLAY LIKE 'E'.
       ELSE.
         TRY.
@@ -422,7 +422,7 @@ FORM update_report .
         ENDTRY.
       ENDIF.
     WHEN 5.
-      "Error al guardar la información. Ejecute nuevamente.
+      "Error al guardar la informaciÃ³n. Ejecute nuevamente.
       MESSAGE text-u07 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN OTHERS.
   ENDCASE.
@@ -492,7 +492,7 @@ FORM update_table USING p_e_option TYPE i.
     EXPORTING
       i_c_path = pa_path.
 
-  "Guardar información del archivo de Excel.
+  "Guardar informaciÃ³n del archivo de Excel.
   go_ppal->update_table(
     EXPORTING
       i_e_option = p_e_option
@@ -503,13 +503,13 @@ FORM update_table USING p_e_option TYPE i.
     WHEN 0.
       MESSAGE text-u06 TYPE 'S' DISPLAY LIKE 'S'.
     WHEN 1.
-      "Extensión del archivo incorrecta
+      "ExtensiÃ³n del archivo incorrecta
       MESSAGE text-u03 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN 2.
-      "Error al leer la información del archivo. Valide la consistencia de los datos.
+      "Error al leer la informaciÃ³n del archivo. Valide la consistencia de los datos.
       MESSAGE text-u04 TYPE 'S' DISPLAY LIKE 'E'.
     WHEN 3.
-      "Error al guardar la información. Ejecute nuevamente.
+      "Error al guardar la informaciÃ³n. Ejecute nuevamente.
       MESSAGE text-u07 TYPE 'S' DISPLAY LIKE 'E'.
   ENDCASE.
 
